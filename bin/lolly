@@ -1,0 +1,5 @@
+#!/usr/bin/env -S guile --no-auto-compile -s
+!#
+;;; this command line entry point loads the lolly library and forwards arguments.
+(load "../src/lolly-core.scm")
+(lolly-main (command-line))

@@ -1,0 +1,66 @@
+(grammar
+  (start program)
+  (tokens LET FN IF ELSE WHILE RETURN TRUE FALSE NIL
+         ID NUMBER STRING ASSIGN PLUS MINUS STAR SLASH EQ LT
+         LPAREN RPAREN LBRACE RBRACE COMMA SEMICOLON)
+  (precedence
+    (right ASSIGN)
+    (left EQ LT)
+    (left PLUS MINUS)
+    (left STAR SLASH))
+  (rules
+    (program (statements)
+      action (lambda (body) (list 'program body)))
+    (statements (statements statement)
+      action (lambda (rest item) (append rest (list item))))
+    (statements (statement)
+      action (lambda (item) (list item)))
+    (statement (LET ID ASSIGN expression SEMICOLON)
+      action (lambda (keyword name equals value end)
+               (list 'let name value)))
+    (statement (ID ASSIGN expression SEMICOLON)
+      action (lambda (name equals value end)
+               (list 'set name value)))
+    (statement (RETURN expression SEMICOLON)
+      action (lambda (keyword value end) (list 'return value)))
+    (statement (IF LPAREN expression RPAREN block)
+      action (lambda (keyword open condition close body)
+               (list 'if condition body)))
+    (statement (IF LPAREN expression RPAREN block ELSE block)
+      action (lambda (keyword open condition close yes otherwise)
+               (list 'if condition yes otherwise)))
+    (statement (WHILE LPAREN expression RPAREN block)
+      action (lambda (keyword open condition close body)
+               (list 'while condition body)))
+    (statement (block)
+      action (lambda (value) value))
+    (block (LBRACE statements RBRACE)
+      action (lambda (open body close) (list 'block body)))
+    (expression (expression ASSIGN expression) prec ASSIGN
+      action (lambda (left equals right) (list 'assign left right)))
+    (expression (expression EQ expression) prec EQ
+      action (lambda (left equals right) (list 'eq left right)))
+    (expression (expression LT expression) prec LT
+      action (lambda (left less right) (list 'lt left right)))
+    (expression (expression PLUS expression) prec PLUS
+      action (lambda (left plus right) (list 'add left right)))
+    (expression (expression MINUS expression) prec MINUS
+      action (lambda (left minus right) (list 'sub left right)))
+    (expression (expression STAR expression) prec STAR
+      action (lambda (left times right) (list 'mul left right)))
+    (expression (expression SLASH expression) prec SLASH
+      action (lambda (left divide right) (list 'div left right)))
+    (expression (ID)
+      action (lambda (name) (list 'name name)))
+    (expression (NUMBER)
+      action (lambda (value) (list 'number value)))
+    (expression (STRING)
+      action (lambda (value) (list 'string value)))
+    (expression (TRUE)
+      action (lambda (value) #t))
+    (expression (FALSE)
+      action (lambda (value) #f))
+    (expression (NIL)
+      action (lambda (value) 'nil))
+    (expression (LPAREN expression RPAREN)
+      action (lambda (open value close) value))))
