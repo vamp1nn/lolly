@@ -35,6 +35,36 @@
 (define lolly-build-states '())
 (define lolly-build-transitions '())
 
+(define (lolly-reachable-symbols start rules)
+  (let loop ((pending (list start)) (seen '()))
+    (if (null? pending) seen
+        (let ((symbol (car pending)))
+          (if (member symbol seen)
+              (loop (cdr pending) seen)
+              (let ((children
+                     (let scan ((rs rules) (out '()))
+                       (if (null? rs) out
+                           (if (eq? (vector-ref (car rs) 0) symbol)
+                               (scan (cdr rs) (lolly-union (vector-ref (car rs) 1) out))
+                               (scan (cdr rs) out))))))
+                (loop (append children (cdr pending)) (cons symbol seen))))))))
+(define (lolly-validate-grammar start tokens rules nonterms)
+  (let ((declared (lolly-union tokens nonterms)))
+    (for-each
+     (lambda (rule)
+       (for-each
+        (lambda (symbol)
+          (if (not (member symbol declared))
+              (error "undefined grammar symbol" symbol)))
+        (vector-ref rule 1)))
+     rules)
+    (let ((reachable (lolly-reachable-symbols start rules)))
+      (for-each
+       (lambda (nonterm)
+         (if (not (member nonterm reachable))
+             (error "unreachable non-terminal" nonterm)))
+       nonterms))))
+
 ;; each rule stores its lhs its rhs its precedence its action and its source number.
 (define (lolly-read-grammar form)
   (if (or (null? form) (not (eq? (car form) 'grammar)))
@@ -80,6 +110,7 @@
                       (if (null? rs) out
                           (loop (cdr rs) (lolly-union (vector-ref (car rs) 1) out)))))
            (terms (lolly-filter (lambda (x) (not (member x nonterms))) symbols)))
+      (lolly-validate-grammar start tokens rules nonterms)
       (if (not (member '$end terms)) (set! terms (append terms (list '$end))))
       (vector tokens start prec rules nonterms terms))))
 
@@ -274,6 +305,12 @@
 
 (define (lolly-action-procedure action)
   (if (procedure? action) action (eval action (current-module))))
+(define (lolly-expected-tokens state actions)
+  (let loop ((entries actions) (out '()))
+    (if (null? entries) (reverse out)
+        (if (= state (car (car (car entries))))
+            (loop (cdr entries) (cons (cadr (car (car entries))) out))
+            (loop (cdr entries) out)))))
 
 (define (lolly-parse tables tokens)
   (let ((actions (vector-ref tables 0)) (gotos (vector-ref tables 1))
@@ -281,7 +318,9 @@
         (input (append tokens (list (cons '$end #f)))))
     (let loop ((input input))
       (let* ((tok (car input)) (a (lolly-assoc (list (car stack) (car tok)) actions)))
-        (if (not a) (error "syntax error" (car tok))
+        (if (not a)
+          (error "syntax error" (car tok)
+               (lolly-expected-tokens (car stack) actions))
             (let ((op (cdr a)))
               (cond ((eq? op 'accept) (if (null? vals) #f (car vals)))
                     ((eq? op 'error) (error "nonassociative syntax error" (car tok)))
