@@ -7,6 +7,8 @@
 ;;; input tokens are (token . value) pairs and rule actions are scheme procedures
 ;;; supplied with the action option and receive rhs values from left to right
 
+(define lolly-version "0.1.0")
+
 (define (lolly-filter p xs)
   (let loop ((xs xs) (out '()))
     (if (null? xs) (reverse out)
@@ -345,6 +347,15 @@
 
 (define (lolly-parser grammar)
   (lolly-tables (lolly-build (if (vector? grammar) grammar (lolly-read-grammar grammar)))))
+(define (lolly-inspect grammar)
+  (let* ((machine (lolly-build (if (vector? grammar) grammar (lolly-read-grammar grammar))))
+         (tables (lolly-tables machine)))
+    (display (list 'version lolly-version
+                   'canonical-states (length (vector-ref machine 4))
+                   'lalr-states (length (vector-ref (lolly-merge machine) 4))
+                   'actions (length (vector-ref tables 0))
+                   'gotos (length (vector-ref tables 1))))
+    (newline)))
 (define (lolly-generate grammar output)
   (let ((tables (lolly-parser grammar)))
     (call-with-output-file output
@@ -354,7 +365,11 @@
         (newline p)))))
 (define (lolly-main args)
   (if (< (length args) 2) (begin (display "usage: guile lolly.scm GRAMMAR [OUTPUT]\n") 1)
-      (begin (if (> (length args) 2) (lolly-generate (lolly-grammar-file (cadr args)) (caddr args))
-                 (write (lolly-parser (lolly-grammar-file (cadr args))))) (newline) 0)))
+      (begin
+        (if (equal? (cadr args) "--inspect")
+            (lolly-inspect (lolly-grammar-file (caddr args)))
+            (if (> (length args) 2) (lolly-generate (lolly-grammar-file (cadr args)) (caddr args))
+                (write (lolly-parser (lolly-grammar-file (cadr args))))))
+        (newline) 0)))
 (if (and (defined? 'command-line) (pair? (command-line))
          (equal? (car (command-line)) "lolly.scm")) (exit (lolly-main (command-line))))
