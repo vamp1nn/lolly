@@ -332,10 +332,9 @@
                      (loop (cdr input)))
                     ((eq? (car op) 'reduce)
                      (let* ((r (list-ref rules (cdr op))) (n (length (vector-ref r 1)))
-                            (argv (reverse
-                                   (let take ((x vals) (i n) (o '()))
-                                     (if (= i 0) o
-                                         (take (cdr x) (- i 1) (cons (car x) o))))))
+                            (argv (let take ((x vals) (i n) (o '()))
+                                    (if (= i 0) o
+                                        (take (cdr x) (- i 1) (cons (car x) o)))))
                             (v (if (vector-ref r 3)
                               (apply (lolly-action-procedure (vector-ref r 3)) argv)
                               (if (null? argv) #f (car argv))))
