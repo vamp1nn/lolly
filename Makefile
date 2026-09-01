@@ -2,6 +2,7 @@
 
 check:
 	guile --no-auto-compile tests/smoke.scm
+	guile --no-auto-compile tests/rich.scm
 	guile --no-auto-compile -c '(load "src/lolly.scm")'
 
 generate:
