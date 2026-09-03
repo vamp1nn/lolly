@@ -31,4 +31,12 @@
 (check "lexer adapter" '((NUMBER . 42))
        (lolly-parser-tokens (list lexeme)))
 
+(define ambiguous-parser (lolly-parser (lolly-grammar-file "examples/reduce-reduce.scm")))
+(define (has-conflict-kind? kind records)
+  (if (null? records) #f
+      (or (eq? kind (cdr (lolly-assoc 'kind (car records))))
+          (has-conflict-kind? kind (cdr records)))))
+(check "reduce reduce provenance" #t
+       (has-conflict-kind? 'reduce-reduce (lolly-conflicts ambiguous-parser)))
+
 (display "all rich checks passed\n")
